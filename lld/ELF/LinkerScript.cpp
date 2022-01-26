@@ -141,7 +141,17 @@ OutputSection *LinkerScript::createOutputSection(StringRef name,
     // There was a forward reference.
     sec = secRef;
   } else {
-    sec = make<OutputSection>(name, SHT_PROGBITS, 0);
+    uint32_t type = SHT_PROGBITS;
+    uint64_t flags = 0;
+
+    // For compatibility with ld.bfd, mark sections starting with .note as
+    // SHT_NOTE and make them allocatable.
+    if (name.startswith_insensitive(".note.")) {
+      type = SHT_NOTE;
+      flags = SHF_ALLOC;
+    }
+
+    sec = make<OutputSection>(name, type, flags);
     if (!secRef)
       secRef = sec;
   }
@@ -151,8 +161,19 @@ OutputSection *LinkerScript::createOutputSection(StringRef name,
 
 OutputSection *LinkerScript::getOrCreateOutputSection(StringRef name) {
   OutputSection *&cmdRef = nameToOutputSection[CachedHashStringRef(name)];
-  if (!cmdRef)
-    cmdRef = make<OutputSection>(name, SHT_PROGBITS, 0);
+  if (!cmdRef) {
+    uint32_t type = SHT_PROGBITS;
+    uint64_t flags = 0;
+
+    // For compatibility with ld.bfd, mark sections starting with .note as
+    // SHT_NOTE and make them allocatable.
+    if (name.startswith_insensitive(".note.")) {
+      type = SHT_NOTE;
+      flags = SHF_ALLOC;
+    }
+
+    cmdRef = make<OutputSection>(name, type, flags);
+  }
   return cmdRef;
 }
 
@@ -1159,6 +1180,11 @@ void LinkerScript::adjustSectionsBeforeSorting() {
     if (isEmpty)
       sec->flags = flags & ((sec->nonAlloc ? 0 : (uint64_t)SHF_ALLOC) |
                             SHF_WRITE | SHF_EXECINSTR);
+
+    // We want note sections to be allocated, so that they are loaded in memory
+    // at execution time. This matches the behaviour of bfd.
+    if (sec->type == SHT_NOTE)
+      sec->flags |= SHF_ALLOC;
 
     // The code below may remove empty output sections. We should save the
     // specified program headers (if exist) and propagate them to subsequent

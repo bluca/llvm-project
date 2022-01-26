@@ -1,0 +1,37 @@
+# REQUIRES: x86
+# RUN: llvm-mc -filetype=obj -triple=x86_64-pc-linux /dev/null -o %t.o
+# RUN: ld.lld -o %t --build-id --script %s %t.o -shared
+# RUN: llvm-readobj -S --symbols %t | FileCheck %s
+
+SECTIONS
+{
+    .note.package : ALIGN(4) {
+        BYTE(0x04) BYTE(0x00) BYTE(0x00) BYTE(0x00) /* Length of Owner including NUL */
+        BYTE(0x0e) BYTE(0x00) BYTE(0x00) BYTE(0x00) /* Length of Value including NUL */
+        BYTE(0xaa) BYTE(0xaa) BYTE(0xaa) BYTE(0xaa) /* Note ID */
+        BYTE(0x4f) BYTE(0x4f) BYTE(0x4f) BYTE(0x00) /* Owner: 'FFF\x00' */
+        BYTE(0x7b) BYTE(0x22) BYTE(0x66) BYTE(0x6f) /* Value: '{"foo":"bar"}\x00\x00\x00' */
+        BYTE(0x6f) BYTE(0x22) BYTE(0x3a) BYTE(0x22)
+        BYTE(0x62) BYTE(0x61) BYTE(0x72) BYTE(0x22)
+        BYTE(0x7d) BYTE(0x00) BYTE(0x00) BYTE(0x00)
+    }
+}
+INSERT AFTER .note.gnu.build-id;
+
+# Make sure the section has type SHT_NOTE and it's marked as
+# allocatable
+# CHECK:       Section {
+# CHECK:         Index:
+# CHECK:         Name: .note.package
+# CHECK-NEXT:    Type: SHT_NOTE
+# CHECK-NEXT:    Flags [
+# CHECK-NEXT:      SHF_ALLOC
+# CHECK-NEXT:    ]
+# CHECK-NEXT:    Address:
+# CHECK-NEXT:    Offset:
+# CHECK-NEXT:    Size:
+# CHECK-NEXT:    Link:
+# CHECK-NEXT:    Info:
+# CHECK-NEXT:    AddressAlignment: 4
+# CHECK-NEXT:    EntrySize:
+# CHECK-NEXT:  }
