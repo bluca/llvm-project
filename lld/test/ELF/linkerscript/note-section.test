@@ -5,7 +5,7 @@
 
 SECTIONS
 {
-    .note.package : ALIGN(4) {
+    .note.package (READONLY) : ALIGN(4) {
         BYTE(0x04) BYTE(0x00) BYTE(0x00) BYTE(0x00) /* Length of Owner including NUL */
         BYTE(0x0e) BYTE(0x00) BYTE(0x00) BYTE(0x00) /* Length of Value including NUL */
         BYTE(0xaa) BYTE(0xaa) BYTE(0xaa) BYTE(0xaa) /* Note ID */

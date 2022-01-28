@@ -788,19 +788,23 @@ Expr ScriptParser::readAssert() {
 }
 
 // Tries to read the special directive for an output section definition which
-// can be one of following: "(NOLOAD)", "(COPY)", "(INFO)" or "(OVERLAY)".
-// Tok1 and Tok2 are next 2 tokens peeked. See comment for readSectionAddressType below.
+// can be one of following: "(NOLOAD)", "(COPY)", "(INFO)", "(OVERLAY)" or
+// "(READONLY)". Tok1 and Tok2 are next 2 tokens peeked. See comment for
+// readSectionAddressType below.
 bool ScriptParser::readSectionDirective(OutputSection *cmd, StringRef tok1, StringRef tok2) {
   if (tok1 != "(")
     return false;
-  if (tok2 != "NOLOAD" && tok2 != "COPY" && tok2 != "INFO" && tok2 != "OVERLAY")
+  if (tok2 != "NOLOAD" && tok2 != "COPY" && tok2 != "INFO" &&
+      tok2 != "OVERLAY" && tok2 != "READONLY")
     return false;
 
   expect("(");
   if (consume("NOLOAD")) {
     cmd->noload = true;
     cmd->type = SHT_NOBITS;
-  } else {
+  } else if (!consume("READONLY")) {
+    // READONLY is supported by bfd, but we add sections as RO by default, so
+    // it's a no-op needed to let users run the same linker scripts
     skip(); // This is "COPY", "INFO" or "OVERLAY".
     cmd->nonAlloc = true;
   }
